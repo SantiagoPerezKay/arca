@@ -30,7 +30,9 @@ class WsaaAuth:
 
     @staticmethod
     def generate_key_and_csr(cuit: str) -> dict:
-        """Genera clave privada y CSR para tramitar el certificado en ARCA."""
+        """Genera clave privada y CSR, y los guarda en la base de datos."""
+        from app.services import cert_store
+
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
         csr = (
@@ -45,25 +47,16 @@ class WsaaAuth:
             .sign(key, hashes.SHA256())
         )
 
-        os.makedirs(CERTS_DIR, exist_ok=True)
-        key_path = os.path.join(CERTS_DIR, f"{cuit}.key")
-        csr_path = os.path.join(CERTS_DIR, f"{cuit}.csr")
+        key_pem = key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption(),
+        ).decode()
+        csr_pem = csr.public_bytes(serialization.Encoding.PEM).decode()
 
-        with open(key_path, "wb") as f:
-            f.write(key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.TraditionalOpenSSL,
-                encryption_algorithm=serialization.NoEncryption(),
-            ))
+        cert_store.save_key_csr(cuit, key_pem, csr_pem)
 
-        with open(csr_path, "wb") as f:
-            f.write(csr.public_bytes(serialization.Encoding.PEM))
-
-        return {
-            "key_path": key_path,
-            "csr_path": csr_path,
-            "csr_pem": csr.public_bytes(serialization.Encoding.PEM).decode(),
-        }
+        return {"csr_pem": csr_pem}
 
     @staticmethod
     def _build_tra(service: str) -> str:
@@ -81,11 +74,9 @@ class WsaaAuth:
         )
 
     @staticmethod
-    def _sign_tra(tra: str, cert_path: str, key_path: str) -> str:
-        with open(cert_path, "rb") as f:
-            cert = x509.load_pem_x509_certificate(f.read())
-        with open(key_path, "rb") as f:
-            key = serialization.load_pem_private_key(f.read(), password=None)
+    def _sign_tra(tra: str, cert_pem: str, key_pem: str) -> str:
+        cert = x509.load_pem_x509_certificate(cert_pem.encode())
+        key = serialization.load_pem_private_key(key_pem.encode(), password=None)
 
         signed = (
             pkcs7.PKCS7SignatureBuilder()
@@ -97,19 +88,21 @@ class WsaaAuth:
 
     @staticmethod
     async def login(service: str, cuit: str, homo: bool = False) -> Optional[dict]:
+        from app.services import cert_store
+
         cache_key = f"{cuit}:{service}"
         cached = WsaaAuth._cache.get(cache_key)
         if cached and cached["expiry"] > datetime.now(timezone.utc):
             return cached
 
-        cert_path = os.path.join(CERTS_DIR, f"{cuit}.crt")
-        key_path = os.path.join(CERTS_DIR, f"{cuit}.key")
+        cert_pem = cert_store.get_crt(cuit)
+        key_pem = cert_store.get_key(cuit)
 
-        if not os.path.exists(cert_path) or not os.path.exists(key_path):
+        if not cert_pem or not key_pem:
             return None
 
         tra = WsaaAuth._build_tra(service)
-        cms = WsaaAuth._sign_tra(tra, cert_path, key_path)
+        cms = WsaaAuth._sign_tra(tra, cert_pem, key_pem)
 
         soap_body = (
             '<?xml version="1.0" encoding="UTF-8"?>'
@@ -167,10 +160,8 @@ class ArcaService:
 
     @staticmethod
     def has_certificate(cuit: str) -> bool:
-        cuit_clean = cuit.replace("-", "").strip()
-        cert_path = os.path.join(CERTS_DIR, f"{cuit_clean}.crt")
-        key_path = os.path.join(CERTS_DIR, f"{cuit_clean}.key")
-        return os.path.exists(cert_path) and os.path.exists(key_path)
+        from app.services import cert_store
+        return cert_store.has_certificate(cuit)
 
     @staticmethod
     async def consultar_persona(cuit: str, cuit_representada: str = None) -> dict:

@@ -31,6 +31,18 @@ class ArcaCredential(Base):
     user = relationship("User", back_populates="credentials")
 
 
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cuit = Column(String(13), unique=True, index=True, nullable=False)
+    key_pem = Column(Text, nullable=True)
+    csr_pem = Column(Text, nullable=True)
+    crt_pem = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
 class Report(Base):
     __tablename__ = "reports"
 

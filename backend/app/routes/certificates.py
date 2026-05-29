@@ -1,13 +1,12 @@
-import os
-import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.models import User, ArcaCredential
 from app.auth import get_current_user
-from app.services.arca_service import WsaaAuth, ArcaService, CERTS_DIR
+from app.services.arca_service import WsaaAuth, ArcaService
+from app.services import cert_store
 
 router = APIRouter(prefix="/api/certificates", tags=["certificates"])
 
@@ -46,15 +45,15 @@ def generate_csr(cuit: str, user: User = Depends(get_current_user), db: Session 
 @router.get("/download-csr/{cuit}")
 def download_csr(cuit: str, user: User = Depends(get_current_user)):
     cuit_clean = cuit.replace("-", "").strip()
-    csr_path = os.path.join(CERTS_DIR, f"{cuit_clean}.csr")
+    csr_pem = cert_store.get_csr(cuit_clean)
 
-    if not os.path.exists(csr_path):
+    if not csr_pem:
         raise HTTPException(status_code=404, detail="No hay CSR generado para este CUIT. Genera uno primero.")
 
-    return FileResponse(
-        path=csr_path,
-        filename=f"{cuit_clean}.csr",
+    return Response(
+        content=csr_pem,
         media_type="application/pkcs10",
+        headers={"Content-Disposition": f'attachment; filename="{cuit_clean}.csr"'},
     )
 
 
@@ -70,31 +69,31 @@ async def upload_cert(
     if not cred:
         raise HTTPException(status_code=404, detail="No hay credencial para este CUIT")
 
-    os.makedirs(CERTS_DIR, exist_ok=True)
-    cert_path = os.path.join(CERTS_DIR, f"{cuit_clean}.crt")
-
     content = await cert_file.read()
-    with open(cert_path, "wb") as f:
-        f.write(content)
+    crt_pem = content.decode("utf-8", "ignore")
 
+    if "BEGIN CERTIFICATE" not in crt_pem:
+        raise HTTPException(status_code=400, detail="El archivo no parece ser un certificado PEM valido (.crt)")
+
+    cert_store.save_crt(cuit_clean, crt_pem)
+
+    st = cert_store.status(cuit_clean)
     return {
         "success": True,
         "message": f"Certificado guardado para CUIT {cuit_clean}",
-        "has_key": os.path.exists(os.path.join(CERTS_DIR, f"{cuit_clean}.key")),
+        "has_key": st["has_key"],
+        "ready": st["ready"],
     }
 
 
 @router.get("/status/{cuit}")
 def cert_status(cuit: str, user: User = Depends(get_current_user)):
     cuit_clean = cuit.replace("-", "").strip()
-    has_cert = ArcaService.has_certificate(cuit_clean)
-    has_key = os.path.exists(os.path.join(CERTS_DIR, f"{cuit_clean}.key"))
-    has_csr = os.path.exists(os.path.join(CERTS_DIR, f"{cuit_clean}.csr"))
-
+    st = cert_store.status(cuit_clean)
     return {
         "cuit": cuit_clean,
-        "has_certificate": has_cert,
-        "has_key": has_key,
-        "has_csr": has_csr,
-        "ready": has_cert and has_key,
+        "has_certificate": st["has_certificate"],
+        "has_key": st["has_key"],
+        "has_csr": st["has_csr"],
+        "ready": st["ready"],
     }

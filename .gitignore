@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Variables de entorno (contienen secretos)
+.env
+backend/.env
+
+# Certificados digitales (contienen claves privadas)
+backend/certs/*.key
+backend/certs/*.crt
+backend/certs/*.csr
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log

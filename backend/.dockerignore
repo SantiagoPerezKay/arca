@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+*.db
+*.sqlite3
+.env
+certs/*.key
+certs/*.crt
+certs/*.csr
+venv/
+.venv/
+.git

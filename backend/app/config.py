@@ -18,10 +18,24 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-if not settings.ENCRYPTION_KEY:
-    settings.ENCRYPTION_KEY = Fernet.generate_key().decode()
 
-fernet = Fernet(settings.ENCRYPTION_KEY.encode() if isinstance(settings.ENCRYPTION_KEY, str) else settings.ENCRYPTION_KEY)
+def _build_fernet(key: str) -> Fernet:
+    """Construye un Fernet validando la clave. Si es invalida, genera una nueva."""
+    if key:
+        try:
+            key_bytes = key.encode() if isinstance(key, str) else key
+            return Fernet(key_bytes)
+        except (ValueError, Exception):
+            print("[CONFIG] ENCRYPTION_KEY invalida (debe ser una clave Fernet base64 de 32 bytes). "
+                  "Generando una temporal. Configura una clave valida con: "
+                  "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"")
+    # Generar clave temporal
+    generated = Fernet.generate_key()
+    settings.ENCRYPTION_KEY = generated.decode()
+    return Fernet(generated)
+
+
+fernet = _build_fernet(settings.ENCRYPTION_KEY)
 
 
 def encrypt_value(value: str) -> str:

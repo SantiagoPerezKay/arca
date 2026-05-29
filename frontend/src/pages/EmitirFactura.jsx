@@ -33,9 +33,9 @@ export default function EmitirFactura() {
     imp_neto: '', imp_iva: '0', concepto: 2, condicion_iva_receptor: 5,
   });
 
-  // Factura E (exportacion)
+  // Factura E (exportacion) - punto 3 = Comprobantes de Exportacion Web Services
   const [exp, setExp] = useState({
-    pto_vta: 2, cliente: '', cuit_pais_cliente: '', domicilio_cliente: '',
+    pto_vta: 3, cliente: '', cuit_pais_cliente: '', domicilio_cliente: '',
     dst_pais: 212, moneda_id: 'DOL', moneda_cotiz: '', descripcion: '', imp_total: '',
   });
 
@@ -134,8 +134,9 @@ export default function EmitirFactura() {
         background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 8,
         padding: 12, marginBottom: 20, fontSize: 13, color: '#795548',
       }}>
-        <b>Importante:</b> Necesitas un punto de venta de tipo "Web Services" habilitado en ARCA
-        (distinto del que usas en Comprobantes en Linea). Las facturas emitidas aca SI se pueden consultar luego.
+        <b>Importante:</b> Solo funciona con puntos de venta de tipo <b>"Web Services"</b> en ARCA
+        (NO los de "Factura en Linea"). Para Factura E usa el punto de
+        "Comprobantes de Exportacion - Web Services". Las facturas emitidas aca SI se consultan luego en la seccion Facturas.
       </div>
 
       {/* CUIT */}

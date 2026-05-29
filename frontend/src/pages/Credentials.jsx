@@ -132,6 +132,12 @@ export default function Credentials() {
     border: '2px solid #e0e0e0', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   };
 
+  const stepNumberStyle = {
+    width: 28, height: 28, minWidth: 28, borderRadius: '50%',
+    background: '#1a1a2e', color: 'white', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14,
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -329,36 +335,110 @@ export default function Credentials() {
       {csrData && (
         <div style={{ background: 'white', borderRadius: 12, padding: 24, marginTop: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, color: '#1a1a2e' }}>CSR generado para CUIT {csrData.cuit}</h3>
+            <h3 style={{ margin: 0, color: '#1a1a2e' }}>Certificado para CUIT {csrData.cuit}</h3>
             <button onClick={() => setCsrData(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
               <X size={20} color="#666" />
             </button>
           </div>
 
-          <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>Contenido del CSR:</span>
-              <button onClick={copyCSR} style={{
-                display: 'flex', alignItems: 'center', gap: 4, background: copied ? '#e8f5e9' : '#e3f2fd',
-                color: copied ? '#2e7d32' : '#1565c0', border: 'none', borderRadius: 6, padding: '4px 10px',
-                cursor: 'pointer', fontSize: 12, fontWeight: 600,
-              }}>
-                {copied ? <><CheckCircle2 size={14} /> Copiado!</> : <><Copy size={14} /> Copiar</>}
+          <p style={{ color: '#666', fontSize: 14, margin: '0 0 20px' }}>
+            Segui estos 4 pasos para vincular tu certificado digital con ARCA:
+          </p>
+
+          {/* PASO 1 */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div style={stepNumberStyle}>1</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>Descarga el archivo CSR</div>
+              <button
+                onClick={() => handleDownloadCSR(csrData.cuit)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 6, border: '1px solid #1565c0',
+                  background: '#e3f2fd', color: '#1565c0', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600,
+                }}
+              >
+                <Download size={14} /> Descargar {csrData.cuit}.csr
               </button>
             </div>
-            <pre style={{ fontSize: 11, lineHeight: 1.4, overflow: 'auto', maxHeight: 200, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-              {csrData.csr_pem}
-            </pre>
           </div>
 
-          <div>
-            <h4 style={{ margin: '0 0 8px', color: '#1a1a2e', fontSize: 14 }}>Instrucciones:</h4>
-            <ol style={{ margin: 0, paddingLeft: 20, color: '#666', fontSize: 13, lineHeight: 1.8 }}>
-              {csrData.instrucciones?.map((inst, i) => (
-                <li key={i}>{inst.replace(/^\d+\.\s*/, '')}</li>
-              ))}
-            </ol>
+          {/* PASO 2 */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div style={stepNumberStyle}>2</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>
+                Carga el CSR en ARCA y descarga el certificado (.crt)
+              </div>
+              <p style={{ color: '#666', fontSize: 13, margin: '0 0 8px', lineHeight: 1.5 }}>
+                Ingresa con tu clave fiscal al Administrador de Certificados Digitales,
+                crea un alias, subi el archivo .csr que descargaste y luego descarga el certificado .crt.
+              </p>
+              <a
+                href="https://serviciosweb.afip.gob.ar/clavefiscal/adminrel/detalleCertificado.aspx"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 16px', borderRadius: 6, border: 'none',
+                  background: '#1a1a2e', color: 'white', cursor: 'pointer',
+                  fontSize: 13, fontWeight: 600, textDecoration: 'none',
+                }}
+              >
+                <ShieldCheck size={14} /> Abrir ARCA - Certificados Digitales
+              </a>
+            </div>
           </div>
+
+          {/* PASO 3 */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            <div style={stepNumberStyle}>3</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>
+                Subi el certificado .crt aca en la app
+              </div>
+              <p style={{ color: '#666', fontSize: 13, margin: '0 0 8px', lineHeight: 1.5 }}>
+                Usa el boton "3. Subir Certificado (.crt)" de la tarjeta de tu credencial (arriba).
+              </p>
+            </div>
+          </div>
+
+          {/* PASO 4 */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+            <div style={stepNumberStyle}>4</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>
+                Autoriza los servicios web en ARCA
+              </div>
+              <p style={{ color: '#666', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                En el "Administrador de Relaciones de Clave Fiscal" autoriza los servicios:
+                <b> Facturacion Electronica (wsfe)</b>, <b>Factura de Exportacion (wsfex)</b>,
+                <b> Constatacion de Comprobantes (wscdc)</b> y <b>Padron A13</b>, asociandolos a este certificado.
+              </p>
+            </div>
+          </div>
+
+          {/* CSR content (opcional, colapsable) */}
+          <details style={{ marginTop: 16 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, color: '#666', fontWeight: 500 }}>
+              Ver contenido del CSR (texto)
+            </summary>
+            <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 16, marginTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <button onClick={copyCSR} style={{
+                  display: 'flex', alignItems: 'center', gap: 4, background: copied ? '#e8f5e9' : '#e3f2fd',
+                  color: copied ? '#2e7d32' : '#1565c0', border: 'none', borderRadius: 6, padding: '4px 10px',
+                  cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                }}>
+                  {copied ? <><CheckCircle2 size={14} /> Copiado!</> : <><Copy size={14} /> Copiar</>}
+                </button>
+              </div>
+              <pre style={{ fontSize: 11, lineHeight: 1.4, overflow: 'auto', maxHeight: 200, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {csrData.csr_pem}
+              </pre>
+            </div>
+          </details>
         </div>
       )}
     </div>

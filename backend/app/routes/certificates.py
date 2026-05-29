@@ -34,12 +34,11 @@ def generate_csr(cuit: str, user: User = Depends(get_current_user), db: Session 
         "success": True,
         "csr_pem": result["csr_pem"],
         "instrucciones": [
-            "1. Copia el CSR de abajo",
-            "2. Ingresa a ARCA con tu clave fiscal: https://auth.arca.gob.ar/contribuyente_/login.xhtml",
-            "3. Accede a 'Administracion de Certificados Digitales'",
-            "4. Selecciona 'Agregar alias' para el servicio que necesites (ej: ws_sr_padron_a5)",
-            "5. Pega el CSR y descarga el certificado (.crt)",
-            "6. Subi el archivo .crt usando el endpoint de subir certificado",
+            "1. Descarga el archivo CSR",
+            "2. Ingresa a ARCA: https://serviciosweb.afip.gob.ar/clavefiscal/adminrel/detalleCertificado.aspx",
+            "3. Crea un alias, subi el archivo .csr y descarga el certificado .crt",
+            "4. Subi el archivo .crt aca en la app",
+            "5. Autoriza los servicios (wsfe, wsfex, wscdc, padron) asociandolos al certificado",
         ],
     }
 

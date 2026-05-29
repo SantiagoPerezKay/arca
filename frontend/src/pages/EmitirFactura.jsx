@@ -48,14 +48,29 @@ export default function EmitirFactura() {
 
   const getCuit = () => selectedCuit.replace(/-/g, '');
 
+  const [cotizLoading, setCotizLoading] = useState(false);
+
   const cargarCotizacion = async () => {
+    setError('');
+    setCotizLoading(true);
     try {
       const res = await consultasAPI.cotizacion(exp.moneda_id, getCuit());
-      if (res.data?.data?.cotizacion) {
+      if (res.data?.success && res.data?.data?.cotizacion) {
         setExp({ ...exp, moneda_cotiz: String(res.data.data.cotizacion) });
+      } else {
+        setError(
+          'No se pudo traer la cotizacion automaticamente: ' +
+          (res.data?.error || 'respuesta vacia') +
+          '. Podes escribirla a mano (valor del dolar oficial de hoy).'
+        );
       }
-    } catch {
-      setError('No se pudo obtener la cotizacion');
+    } catch (err) {
+      setError(
+        'Error al consultar cotizacion: ' + extraerError(err) +
+        '. Podes escribirla a mano.'
+      );
+    } finally {
+      setCotizLoading(false);
     }
   };
 
@@ -308,8 +323,8 @@ export default function EmitirFactura() {
               <label style={labelStyle}>Cotizacion</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 <input type="number" step="0.01" value={exp.moneda_cotiz} onChange={(e) => setExp({ ...exp, moneda_cotiz: e.target.value })} style={inputStyle} placeholder="Ej: 1000" />
-                <button onClick={cargarCotizacion} style={{ padding: '0 12px', borderRadius: 8, border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>
-                  Auto
+                <button onClick={cargarCotizacion} disabled={cotizLoading} style={{ padding: '0 12px', borderRadius: 8, border: '1px solid #ddd', background: 'white', cursor: cotizLoading ? 'wait' : 'pointer', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  {cotizLoading ? '...' : 'Auto'}
                 </button>
               </div>
             </div>

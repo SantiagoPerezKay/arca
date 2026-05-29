@@ -139,6 +139,10 @@ class WsfexService:
         hoy = datetime.now().strftime("%Y%m%d")
         imp_total_r = round(imp_total, 2)
 
+        # Permiso_existente: solo aplica a exportacion de bienes (tipo 1).
+        # Para servicios (tipo 2) y otros (tipo 4) debe ir vacio.
+        permiso = "N" if tipo_expo == 1 else ""
+
         body = (
             "<ar:FEXAuthorize>"
             "<ar:Auth>"
@@ -153,7 +157,7 @@ class WsfexService:
             f"<ar:Punto_vta>{pto_vta}</ar:Punto_vta>"
             f"<ar:Cbte_nro>{nro}</ar:Cbte_nro>"
             f"<ar:Tipo_expo>{tipo_expo}</ar:Tipo_expo>"
-            "<ar:Permiso_existente>N</ar:Permiso_existente>"
+            f"<ar:Permiso_existente>{permiso}</ar:Permiso_existente>"
             f"<ar:Dst_cmp>{dst_pais}</ar:Dst_cmp>"
             f"<ar:Cliente>{cliente}</ar:Cliente>"
             f"<ar:Cuit_pais_cliente>{cuit_pais_cliente}</ar:Cuit_pais_cliente>"

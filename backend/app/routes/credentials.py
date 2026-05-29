@@ -50,16 +50,19 @@ def list_credentials(user: User = Depends(get_current_user), db: Session = Depen
 
 @router.post("/", response_model=CredentialResponse)
 def create_credential(req: CredentialCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Normalizar CUIT a solo digitos (sin guiones ni espacios)
+    cuit_normalizado = req.cuit.replace("-", "").replace(" ", "").strip()
+
     existing = db.query(ArcaCredential).filter(
         ArcaCredential.user_id == user.id,
-        ArcaCredential.cuit == req.cuit,
+        ArcaCredential.cuit == cuit_normalizado,
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe una credencial para este CUIT")
 
     cred = ArcaCredential(
         user_id=user.id,
-        cuit=req.cuit,
+        cuit=cuit_normalizado,
         encrypted_password=encrypt_value(req.password),
         alias=req.alias,
     )

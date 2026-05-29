@@ -12,13 +12,20 @@ from app.services.arca_service import WsaaAuth, ArcaService, CERTS_DIR
 router = APIRouter(prefix="/api/certificates", tags=["certificates"])
 
 
+def _find_credential(db: Session, user: User, cuit: str):
+    """Busca una credencial comparando CUIT normalizado (sin guiones ni espacios)."""
+    cuit_clean = cuit.replace("-", "").replace(" ", "").strip()
+    creds = db.query(ArcaCredential).filter(ArcaCredential.user_id == user.id).all()
+    for c in creds:
+        if c.cuit.replace("-", "").replace(" ", "").strip() == cuit_clean:
+            return c
+    return None
+
+
 @router.post("/generate-csr/{cuit}")
 def generate_csr(cuit: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cuit_clean = cuit.replace("-", "").strip()
-    cred = db.query(ArcaCredential).filter(
-        ArcaCredential.user_id == user.id,
-        ArcaCredential.cuit.in_([cuit_clean, cuit]),
-    ).first()
+    cred = _find_credential(db, user, cuit)
     if not cred:
         raise HTTPException(status_code=404, detail="No hay credencial para este CUIT")
 
@@ -60,10 +67,7 @@ async def upload_cert(
     db: Session = Depends(get_db),
 ):
     cuit_clean = cuit.replace("-", "").strip()
-    cred = db.query(ArcaCredential).filter(
-        ArcaCredential.user_id == user.id,
-        ArcaCredential.cuit.in_([cuit_clean, cuit]),
-    ).first()
+    cred = _find_credential(db, user, cuit)
     if not cred:
         raise HTTPException(status_code=404, detail="No hay credencial para este CUIT")
 

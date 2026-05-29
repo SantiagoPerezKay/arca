@@ -81,6 +81,8 @@ export const facturasAPI = {
   puntosVenta: (cuit) => api.get(`/facturas/puntos-venta/${cuit}`),
   tiposComprobante: (cuit) => api.get(`/facturas/tipos-comprobante/${cuit}`),
   estadoWsfe: () => api.get('/facturas/estado-wsfe'),
+  emitir: (data) => api.post('/facturas/emitir', data),
+  emitirExportacion: (data) => api.post('/facturas/emitir-exportacion', data),
 };
 
 export const consultasAPI = {

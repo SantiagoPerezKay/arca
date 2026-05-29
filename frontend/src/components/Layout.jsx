@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   ShieldCheck,
+  FilePlus,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,6 +19,7 @@ const navItems = [
   { path: '/credentials', label: 'Credenciales', icon: KeyRound },
   { path: '/reports', label: 'Informes', icon: FileSearch },
   { path: '/facturas', label: 'Facturas', icon: Receipt },
+  { path: '/emitir', label: 'Emitir Factura', icon: FilePlus },
   { path: '/consultas', label: 'Consultas', icon: ShieldCheck },
   { path: '/history', label: 'Historial', icon: History },
 ];

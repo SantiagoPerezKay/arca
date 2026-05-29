@@ -305,6 +305,146 @@ class FacturasService:
         }
 
     @staticmethod
+    async def emitir_factura(
+        cuit: str,
+        pto_vta: int,
+        cbte_tipo: int,
+        doc_tipo: int,
+        doc_nro: str,
+        imp_neto: float,
+        imp_iva: float = 0.0,
+        concepto: int = 2,
+        condicion_iva_receptor: int = 5,
+        fecha_serv_desde: str = None,
+        fecha_serv_hasta: str = None,
+        fecha_vto_pago: str = None,
+        homo: bool = False,
+    ) -> dict:
+        """
+        Emite una factura via WSFE (FECAESolicitar).
+        cbte_tipo: 1=Fact A, 6=Fact B, 11=Fact C
+        concepto: 1=Productos, 2=Servicios, 3=Ambos
+        Para Factura C, imp_iva debe ser 0 (no discrimina IVA).
+        condicion_iva_receptor: 1=RI, 4=Exento, 5=Consumidor Final, 6=Monotributo
+        """
+        cuit_clean = cuit.replace("-", "").strip()
+        auth = await WsaaAuth.login("wsfe", cuit_clean, homo)
+        if not auth:
+            return {"success": False, "error": "Sin certificado para WSFE", "requires_certificate": True}
+
+        # Obtener ultimo comprobante para calcular el siguiente numero
+        ultimo = await FacturasService.obtener_ultimo_comprobante(cuit_clean, pto_vta, cbte_tipo, homo)
+        if not ultimo.get("success"):
+            return {"success": False, "error": f"No se pudo obtener el ultimo comprobante: {ultimo.get('error')}"}
+
+        nro = ultimo["data"]["cbte_nro"] + 1
+        hoy = datetime.now().strftime("%Y%m%d")
+
+        es_factura_c = cbte_tipo in (11, 12, 13)
+        imp_total = round(imp_neto + imp_iva, 2)
+
+        # Factura C: ImpNeto va en ImpNeto, ImpIVA=0, sin AlicIva
+        # Factura A/B: ImpNeto gravado + ImpIVA + AlicIva
+        iva_block = ""
+        if not es_factura_c and imp_iva > 0:
+            iva_block = (
+                "<ar:Iva>"
+                "<ar:AlicIva>"
+                "<ar:Id>5</ar:Id>"  # 5 = 21%
+                f"<ar:BaseImp>{imp_neto}</ar:BaseImp>"
+                f"<ar:Importe>{imp_iva}</ar:Importe>"
+                "</ar:AlicIva>"
+                "</ar:Iva>"
+            )
+
+        # Fechas de servicio (requeridas si concepto 2 o 3)
+        fecha_serv = ""
+        if concepto in (2, 3):
+            fsd = (fecha_serv_desde or hoy).replace("-", "")
+            fsh = (fecha_serv_hasta or hoy).replace("-", "")
+            fvp = (fecha_vto_pago or hoy).replace("-", "")
+            fecha_serv = (
+                f"<ar:FchServDesde>{fsd}</ar:FchServDesde>"
+                f"<ar:FchServHasta>{fsh}</ar:FchServHasta>"
+                f"<ar:FchVtoPago>{fvp}</ar:FchVtoPago>"
+            )
+
+        body = (
+            "<ar:FECAESolicitar>"
+            f"{_auth_block(auth['token'], auth['sign'], cuit_clean)}"
+            "<ar:FeCAEReq>"
+            "<ar:FeCabReq>"
+            "<ar:CantReg>1</ar:CantReg>"
+            f"<ar:PtoVta>{pto_vta}</ar:PtoVta>"
+            f"<ar:CbteTipo>{cbte_tipo}</ar:CbteTipo>"
+            "</ar:FeCabReq>"
+            "<ar:FeDetReq>"
+            "<ar:FECAEDetRequest>"
+            f"<ar:Concepto>{concepto}</ar:Concepto>"
+            f"<ar:DocTipo>{doc_tipo}</ar:DocTipo>"
+            f"<ar:DocNro>{doc_nro}</ar:DocNro>"
+            f"<ar:CbteDesde>{nro}</ar:CbteDesde>"
+            f"<ar:CbteHasta>{nro}</ar:CbteHasta>"
+            f"<ar:CbteFch>{hoy}</ar:CbteFch>"
+            f"<ar:ImpTotal>{imp_total}</ar:ImpTotal>"
+            "<ar:ImpTotConc>0</ar:ImpTotConc>"
+            f"<ar:ImpNeto>{imp_neto}</ar:ImpNeto>"
+            "<ar:ImpOpEx>0</ar:ImpOpEx>"
+            "<ar:ImpTrib>0</ar:ImpTrib>"
+            f"<ar:ImpIVA>{0 if es_factura_c else imp_iva}</ar:ImpIVA>"
+            f"{fecha_serv}"
+            f"<ar:CondicionIVAReceptorId>{condicion_iva_receptor}</ar:CondicionIVAReceptorId>"
+            "<ar:MonId>PES</ar:MonId>"
+            "<ar:MonCotiz>1</ar:MonCotiz>"
+            f"{iva_block}"
+            "</ar:FECAEDetRequest>"
+            "</ar:FeDetReq>"
+            "</ar:FeCAEReq>"
+            "</ar:FECAESolicitar>"
+        )
+
+        try:
+            root = await FacturasService._call_wsfe("FECAESolicitar", body, homo)
+
+            resultado = _find_text(root, "Resultado")
+            cae = _find_text(root, "CAE")
+            cae_vto = _find_text(root, "CAEFchVto")
+
+            # Errores
+            errores = []
+            for err in _find_all(root, "Err"):
+                errores.append({"code": _find_text(err, "Code"), "msg": _find_text(err, "Msg")})
+            observaciones = []
+            for obs in _find_all(root, "Obs"):
+                observaciones.append({"code": _find_text(obs, "Code"), "msg": _find_text(obs, "Msg")})
+
+            if resultado == "A" and cae:
+                return {
+                    "success": True,
+                    "data": {
+                        "resultado": resultado,
+                        "cae": cae,
+                        "cae_vto": _format_fecha(cae_vto),
+                        "cbte_nro": nro,
+                        "pto_vta": pto_vta,
+                        "cbte_tipo": TIPOS_CBTE.get(cbte_tipo, str(cbte_tipo)),
+                        "cbte_tipo_code": cbte_tipo,
+                        "imp_total": imp_total,
+                        "fecha": _format_fecha(hoy),
+                        "observaciones": observaciones,
+                    },
+                }
+            return {
+                "success": False,
+                "error": "ARCA rechazo el comprobante",
+                "resultado": resultado,
+                "errores": errores,
+                "observaciones": observaciones,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @staticmethod
     async def obtener_tipos_comprobante(cuit: str, homo: bool = False) -> dict:
         cuit_clean = cuit.replace("-", "").strip()
         auth = await WsaaAuth.login("wsfe", cuit_clean, homo)

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timedelta
 import json
@@ -11,6 +12,34 @@ from app.services.facturas_service import FacturasService
 from app.services.wsfex_service import WsfexService
 
 router = APIRouter(prefix="/api/facturas", tags=["facturas"])
+
+
+class EmitirFacturaRequest(BaseModel):
+    cuit: str
+    pto_vta: int
+    cbte_tipo: int = 11  # Factura C por defecto
+    doc_tipo: int = 80   # 80=CUIT, 96=DNI, 99=Consumidor Final
+    doc_nro: str = "0"
+    imp_neto: float
+    imp_iva: float = 0.0
+    concepto: int = 2    # 1=Productos, 2=Servicios, 3=Ambos
+    condicion_iva_receptor: int = 5
+
+
+class EmitirFacturaERequest(BaseModel):
+    cuit: str
+    pto_vta: int
+    cliente: str
+    cuit_pais_cliente: str
+    domicilio_cliente: str
+    dst_pais: int
+    moneda_id: str = "DOL"
+    moneda_cotiz: float
+    descripcion: str
+    imp_total: float
+    tipo_expo: int = 2
+    incoterms: str = ""
+    idioma: int = 2
 
 
 TIPOS_WSFEX = {19, 20, 21}
@@ -167,5 +196,69 @@ async def tipos_comprobante(cuit: str, user: User = Depends(get_current_user)):
 @router.get("/estado-wsfe")
 async def estado_wsfe(user: User = Depends(get_current_user)):
     return await FacturasService.verificar_servicio()
+
+
+@router.post("/emitir")
+async def emitir_factura(
+    req: EmitirFacturaRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Emite una Factura A/B/C via WSFE."""
+    result = await FacturasService.emitir_factura(
+        cuit=req.cuit,
+        pto_vta=req.pto_vta,
+        cbte_tipo=req.cbte_tipo,
+        doc_tipo=req.doc_tipo,
+        doc_nro=req.doc_nro,
+        imp_neto=req.imp_neto,
+        imp_iva=req.imp_iva,
+        concepto=req.concepto,
+        condicion_iva_receptor=req.condicion_iva_receptor,
+    )
+    if result.get("success"):
+        report = Report(
+            user_id=user.id,
+            cuit=req.cuit.replace("-", ""),
+            report_type="factura_emitida",
+            data=json.dumps(result["data"], ensure_ascii=False),
+        )
+        db.add(report)
+        db.commit()
+    return result
+
+
+@router.post("/emitir-exportacion")
+async def emitir_factura_exportacion(
+    req: EmitirFacturaERequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Emite una Factura E de exportacion via WSFEX."""
+    result = await WsfexService.emitir_factura_e(
+        cuit=req.cuit,
+        pto_vta=req.pto_vta,
+        cliente=req.cliente,
+        cuit_pais_cliente=req.cuit_pais_cliente,
+        domicilio_cliente=req.domicilio_cliente,
+        dst_pais=req.dst_pais,
+        moneda_id=req.moneda_id,
+        moneda_cotiz=req.moneda_cotiz,
+        descripcion=req.descripcion,
+        imp_total=req.imp_total,
+        tipo_expo=req.tipo_expo,
+        incoterms=req.incoterms,
+        idioma=req.idioma,
+    )
+    if result.get("success"):
+        report = Report(
+            user_id=user.id,
+            cuit=req.cuit.replace("-", ""),
+            report_type="factura_e_emitida",
+            data=json.dumps(result["data"], ensure_ascii=False),
+        )
+        db.add(report)
+        db.commit()
+    return result
 
 

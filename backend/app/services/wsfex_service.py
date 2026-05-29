@@ -81,6 +81,140 @@ class WsfexService:
             return {"success": False, "error": str(e)}
 
     @staticmethod
+    async def _obtener_ultimo_id(cuit_clean: str, auth: dict, homo: bool = False) -> int:
+        """Obtiene el ultimo ID de request para generar el siguiente."""
+        body = (
+            "<ar:FEXGetLast_ID>"
+            "<ar:Auth>"
+            f"<ar:Token>{auth['token']}</ar:Token>"
+            f"<ar:Sign>{auth['sign']}</ar:Sign>"
+            f"<ar:Cuit>{cuit_clean}</ar:Cuit>"
+            "</ar:Auth>"
+            "</ar:FEXGetLast_ID>"
+        )
+        try:
+            root = await WsfexService._call_wsfex("FEXGetLast_ID", body, homo)
+            return int(_find_text(root, "Id", "0"))
+        except Exception:
+            return 0
+
+    @staticmethod
+    async def emitir_factura_e(
+        cuit: str,
+        pto_vta: int,
+        cliente: str,
+        cuit_pais_cliente: str,
+        domicilio_cliente: str,
+        dst_pais: int,
+        moneda_id: str,
+        moneda_cotiz: float,
+        descripcion: str,
+        imp_total: float,
+        cbte_tipo: int = 19,
+        tipo_expo: int = 2,
+        incoterms: str = "",
+        idioma: int = 2,
+        forma_pago: str = "Transferencia bancaria",
+        homo: bool = False,
+    ) -> dict:
+        """
+        Emite una Factura E de exportacion via WSFEX (FEXAuthorize).
+        tipo_expo: 1=Bienes, 2=Servicios, 4=Otros
+        idioma: 1=Espanol, 2=Ingles, 3=Portugues
+        """
+        cuit_clean = cuit.replace("-", "").strip()
+        auth = await WsaaAuth.login("wsfex", cuit_clean, homo)
+        if not auth:
+            return {"success": False, "error": "Sin certificado para WSFEX", "requires_certificate": True}
+
+        # Siguiente numero de comprobante y de ID
+        ultimo = await WsfexService.obtener_ultimo_comprobante(cuit_clean, pto_vta, cbte_tipo, homo)
+        if not ultimo.get("success"):
+            return {"success": False, "error": f"No se pudo obtener ultimo comprobante: {ultimo.get('error')}"}
+        nro = ultimo["data"]["cbte_nro"] + 1
+
+        last_id = await WsfexService._obtener_ultimo_id(cuit_clean, auth, homo)
+        nuevo_id = last_id + 1
+
+        hoy = datetime.now().strftime("%Y%m%d")
+        imp_total_r = round(imp_total, 2)
+
+        body = (
+            "<ar:FEXAuthorize>"
+            "<ar:Auth>"
+            f"<ar:Token>{auth['token']}</ar:Token>"
+            f"<ar:Sign>{auth['sign']}</ar:Sign>"
+            f"<ar:Cuit>{cuit_clean}</ar:Cuit>"
+            "</ar:Auth>"
+            "<ar:Cmp>"
+            f"<ar:Id>{nuevo_id}</ar:Id>"
+            f"<ar:Fecha_cbte>{hoy}</ar:Fecha_cbte>"
+            f"<ar:Cbte_Tipo>{cbte_tipo}</ar:Cbte_Tipo>"
+            f"<ar:Punto_vta>{pto_vta}</ar:Punto_vta>"
+            f"<ar:Cbte_nro>{nro}</ar:Cbte_nro>"
+            f"<ar:Tipo_expo>{tipo_expo}</ar:Tipo_expo>"
+            "<ar:Permiso_existente>N</ar:Permiso_existente>"
+            f"<ar:Dst_cmp>{dst_pais}</ar:Dst_cmp>"
+            f"<ar:Cliente>{cliente}</ar:Cliente>"
+            f"<ar:Cuit_pais_cliente>{cuit_pais_cliente}</ar:Cuit_pais_cliente>"
+            f"<ar:Domicilio_cliente>{domicilio_cliente}</ar:Domicilio_cliente>"
+            f"<ar:Moneda_Id>{moneda_id}</ar:Moneda_Id>"
+            f"<ar:Moneda_ctz>{moneda_cotiz}</ar:Moneda_ctz>"
+            f"<ar:Imp_total>{imp_total_r}</ar:Imp_total>"
+            f"<ar:Idioma_cbte>{idioma}</ar:Idioma_cbte>"
+            f"<ar:Forma_pago>{forma_pago}</ar:Forma_pago>"
+            + (f"<ar:Incoterms>{incoterms}</ar:Incoterms>" if incoterms else "")
+            + "<ar:Items>"
+            "<ar:Item>"
+            "<ar:Pro_codigo>1</ar:Pro_codigo>"
+            f"<ar:Pro_ds>{descripcion}</ar:Pro_ds>"
+            "<ar:Pro_qty>1</ar:Pro_qty>"
+            "<ar:Pro_umed>7</ar:Pro_umed>"
+            f"<ar:Pro_precio_uni>{imp_total_r}</ar:Pro_precio_uni>"
+            f"<ar:Pro_total_item>{imp_total_r}</ar:Pro_total_item>"
+            "</ar:Item>"
+            "</ar:Items>"
+            "</ar:Cmp>"
+            "</ar:FEXAuthorize>"
+        )
+
+        try:
+            root = await WsfexService._call_wsfex("FEXAuthorize", body, homo)
+
+            resultado = _find_text(root, "Resultado")
+            cae = _find_text(root, "Cae")
+            cae_vto = _find_text(root, "Fch_venc_Cae")
+
+            errores = []
+            for err in _find_all(root, "FEXErr"):
+                errores.append({"code": _find_text(err, "ErrCode"), "msg": _find_text(err, "ErrMsg")})
+
+            if cae and resultado == "A":
+                return {
+                    "success": True,
+                    "data": {
+                        "resultado": resultado,
+                        "cae": cae,
+                        "cae_vto": _format_fecha(cae_vto),
+                        "cbte_nro": nro,
+                        "pto_vta": pto_vta,
+                        "cbte_tipo": "Factura E",
+                        "cbte_tipo_code": cbte_tipo,
+                        "imp_total": imp_total_r,
+                        "moneda_id": moneda_id,
+                        "fecha": _format_fecha(hoy),
+                    },
+                }
+            return {
+                "success": False,
+                "error": "ARCA rechazo el comprobante",
+                "resultado": resultado,
+                "errores": errores,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    @staticmethod
     async def obtener_ultimo_comprobante(cuit: str, pto_vta: int, cbte_tipo: int = 19, homo: bool = False) -> dict:
         cuit_clean = cuit.replace("-", "").strip()
         auth = await WsaaAuth.login("wsfex", cuit_clean, homo)

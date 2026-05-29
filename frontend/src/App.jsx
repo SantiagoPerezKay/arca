@@ -8,6 +8,7 @@ import Reports from './pages/Reports';
 import History from './pages/History';
 import Facturas from './pages/Facturas';
 import Consultas from './pages/Consultas';
+import EmitirFactura from './pages/EmitirFactura';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/credentials" element={<ProtectedRoute><Credentials /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
           <Route path="/facturas" element={<ProtectedRoute><Facturas /></ProtectedRoute>} />
+          <Route path="/emitir" element={<ProtectedRoute><EmitirFactura /></ProtectedRoute>} />
           <Route path="/consultas" element={<ProtectedRoute><Consultas /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

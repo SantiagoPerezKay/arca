@@ -59,8 +59,23 @@ export default function EmitirFactura() {
     }
   };
 
+  const extraerError = (err) => {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      // Errores de validacion de FastAPI (422)
+      return detail.map((d) => `${d.loc?.slice(-1)[0] || 'campo'}: ${d.msg}`).join(' | ');
+    }
+    if (detail && typeof detail === 'object') return JSON.stringify(detail);
+    return err.message || 'Error al emitir';
+  };
+
   const emitirNacional = async () => {
-    setError(''); setResult(null); setLoading(true);
+    setError(''); setResult(null);
+    if (!nac.imp_neto || isNaN(parseFloat(nac.imp_neto))) {
+      setError('Ingresa un importe neto valido'); return;
+    }
+    setLoading(true);
     try {
       const res = await facturasAPI.emitir({
         cuit: getCuit(),
@@ -75,12 +90,24 @@ export default function EmitirFactura() {
       });
       setResult(res.data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al emitir');
+      setError(extraerError(err));
     } finally { setLoading(false); }
   };
 
   const emitirExportacion = async () => {
-    setError(''); setResult(null); setLoading(true);
+    setError(''); setResult(null);
+    // Validacion previa
+    if (!exp.cliente.trim()) { setError('Ingresa el nombre del cliente'); return; }
+    if (!exp.domicilio_cliente.trim()) { setError('Ingresa el domicilio del cliente'); return; }
+    if (!exp.cuit_pais_cliente.trim()) { setError('Ingresa el CUIT del pais del cliente'); return; }
+    if (!exp.descripcion.trim()) { setError('Ingresa la descripcion del servicio'); return; }
+    if (!exp.moneda_cotiz || isNaN(parseFloat(exp.moneda_cotiz))) {
+      setError('Falta la cotizacion. Click en "Auto" para traerla de ARCA'); return;
+    }
+    if (!exp.imp_total || isNaN(parseFloat(exp.imp_total))) {
+      setError('Ingresa el importe total'); return;
+    }
+    setLoading(true);
     try {
       const res = await facturasAPI.emitirExportacion({
         cuit: getCuit(),
@@ -96,7 +123,7 @@ export default function EmitirFactura() {
       });
       setResult(res.data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Error al emitir');
+      setError(extraerError(err));
     } finally { setLoading(false); }
   };
 

@@ -15,12 +15,17 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 ALGORITHM = "HS256"
 
 
+def _truncate(password: str) -> str:
+    """bcrypt solo soporta hasta 72 bytes. Truncar para evitar errores."""
+    return password.encode("utf-8")[:72].decode("utf-8", "ignore")
+
+
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return pwd_context.verify(_truncate(plain), hashed)
 
 
 def create_access_token(data: dict) -> str:

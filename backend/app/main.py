@@ -15,11 +15,13 @@ app = FastAPI(
 
 # CORS: acepta origenes desde variable de entorno o defaults para desarrollo
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:3000")
-origins = [o.strip() for o in cors_origins.split(",")]
+# Normalizar: quitar espacios y barra final
+origins = [o.strip().rstrip("/") for o in cors_origins.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.easypanel\.host",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// En produccion, lee de window.__ENV__ (inyectado por nginx) o de VITE_API_URL (build time)
+const apiUrl = window.__ENV__?.VITE_API_URL || import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  baseURL: apiUrl,
 });
 
 api.interceptors.request.use((config) => {

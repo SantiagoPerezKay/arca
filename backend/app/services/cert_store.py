@@ -27,6 +27,21 @@ def save_key_csr(cuit: str, key_pem: str, csr_pem: str) -> None:
         db.close()
 
 
+def save_key(cuit: str, key_pem: str) -> None:
+    """Guarda (o actualiza) solo la clave privada. Para importar una clave existente."""
+    cuit = _normalize(cuit)
+    db = SessionLocal()
+    try:
+        cert = db.query(Certificate).filter(Certificate.cuit == cuit).first()
+        if cert is None:
+            cert = Certificate(cuit=cuit)
+            db.add(cert)
+        cert.key_pem = key_pem
+        db.commit()
+    finally:
+        db.close()
+
+
 def save_crt(cuit: str, crt_pem: str) -> None:
     """Guarda el certificado firmado (.crt) descargado de ARCA."""
     cuit = _normalize(cuit)

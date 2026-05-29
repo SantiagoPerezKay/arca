@@ -86,6 +86,35 @@ async def upload_cert(
     }
 
 
+@router.post("/upload-key/{cuit}")
+async def upload_key(
+    cuit: str,
+    key_file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Importa una clave privada (.key) existente. Util para reusar un certificado ya autorizado."""
+    cuit_clean = cuit.replace("-", "").strip()
+    cred = _find_credential(db, user, cuit)
+    if not cred:
+        raise HTTPException(status_code=404, detail="No hay credencial para este CUIT")
+
+    content = await key_file.read()
+    key_pem = content.decode("utf-8", "ignore")
+
+    if "PRIVATE KEY" not in key_pem:
+        raise HTTPException(status_code=400, detail="El archivo no parece ser una clave privada PEM valida (.key)")
+
+    cert_store.save_key(cuit_clean, key_pem)
+
+    st = cert_store.status(cuit_clean)
+    return {
+        "success": True,
+        "message": f"Clave privada guardada para CUIT {cuit_clean}",
+        "ready": st["ready"],
+    }
+
+
 @router.get("/status/{cuit}")
 def cert_status(cuit: str, user: User = Depends(get_current_user)):
     cuit_clean = cuit.replace("-", "").strip()

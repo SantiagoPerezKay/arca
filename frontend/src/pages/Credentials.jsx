@@ -16,6 +16,7 @@ export default function Credentials() {
   const [copied, setCopied] = useState(false);
   const fileRef = useRef(null);
   const [uploadingCuit, setUploadingCuit] = useState(null);
+  const [uploadingKeyCuit, setUploadingKeyCuit] = useState(null);
 
   const load = async () => {
     try {
@@ -109,6 +110,19 @@ export default function Credentials() {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.response?.data?.detail || 'Error al subir certificado');
+    }
+  };
+
+  const handleUploadKey = async (cuit, file) => {
+    setError('');
+    try {
+      await certificatesAPI.uploadKey(cuit, file);
+      setSuccess('Clave privada importada correctamente');
+      setUploadingKeyCuit(null);
+      load();
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Error al subir la clave');
     }
   };
 
@@ -321,6 +335,27 @@ export default function Credentials() {
                       accept=".crt,.pem,.cer"
                       onChange={(e) => {
                         if (e.target.files[0]) handleUploadCert(cuitClean, e.target.files[0]);
+                      }}
+                      style={{ fontSize: 13 }}
+                    />
+                  )}
+                  <button
+                    onClick={() => setUploadingKeyCuit(uploadingKeyCuit === cuitClean ? null : cuitClean)}
+                    title="Importar una clave privada .key existente (si ya tenes un certificado autorizado en ARCA)"
+                    style={{
+                      padding: '8px 16px', borderRadius: 6, border: '1px dashed #999',
+                      background: 'white', cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                      display: 'flex', alignItems: 'center', gap: 6, color: '#666',
+                    }}
+                  >
+                    <KeyRound size={14} /> Importar clave (.key)
+                  </button>
+                  {uploadingKeyCuit === cuitClean && (
+                    <input
+                      type="file"
+                      accept=".key,.pem"
+                      onChange={(e) => {
+                        if (e.target.files[0]) handleUploadKey(cuitClean, e.target.files[0]);
                       }}
                       style={{ fontSize: 13 }}
                     />

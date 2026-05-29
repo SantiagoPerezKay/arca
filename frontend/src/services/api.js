@@ -71,6 +71,11 @@ export const certificatesAPI = {
     form.append('cert_file', file);
     return api.post(`/certificates/upload-cert/${cuit}`, form);
   },
+  uploadKey: (cuit, file) => {
+    const form = new FormData();
+    form.append('key_file', file);
+    return api.post(`/certificates/upload-key/${cuit}`, form);
+  },
   status: (cuit) => api.get(`/certificates/status/${cuit}`),
 };
 

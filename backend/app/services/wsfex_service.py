@@ -50,7 +50,7 @@ def _format_fecha(fecha_str: str) -> str:
 class WsfexService:
 
     @staticmethod
-    async def _call_wsfex(soap_action: str, body: str, homo: bool = False) -> ET.Element:
+    async def _call_wsfex_raw(soap_action: str, body: str, homo: bool = False) -> str:
         url = WSFEX_URL_HOMO if homo else WSFEX_URL
         envelope = _soap_envelope(body)
         async with httpx.AsyncClient(timeout=30, verify=_ssl_ctx) as client:
@@ -62,7 +62,12 @@ class WsfexService:
                     "SOAPAction": f"{WSFEX_NS}{soap_action}",
                 },
             )
-        return ET.fromstring(resp.text)
+        return resp.text
+
+    @staticmethod
+    async def _call_wsfex(soap_action: str, body: str, homo: bool = False) -> ET.Element:
+        resp_text = await WsfexService._call_wsfex_raw(soap_action, body, homo)
+        return ET.fromstring(resp_text)
 
     @staticmethod
     async def verificar_servicio(homo: bool = False) -> dict:
@@ -183,15 +188,28 @@ class WsfexService:
         )
 
         try:
-            root = await WsfexService._call_wsfex("FEXAuthorize", body, homo)
+            resp_text = await WsfexService._call_wsfex_raw("FEXAuthorize", body, homo)
+            print(f"[WSFEX] FEXAuthorize respuesta cruda:\n{resp_text}\n")
+            root = ET.fromstring(resp_text)
 
             resultado = _find_text(root, "Resultado")
             cae = _find_text(root, "Cae")
             cae_vto = _find_text(root, "Fch_venc_Cae")
 
+            # Capturar errores en todos los formatos posibles de WSFEX
             errores = []
-            for err in _find_all(root, "FEXErr"):
-                errores.append({"code": _find_text(err, "ErrCode"), "msg": _find_text(err, "ErrMsg")})
+            for tag_err in ("FEXErr", "Err", "Errors"):
+                for err in _find_all(root, tag_err):
+                    code = _find_text(err, "ErrCode") or _find_text(err, "Code") or _find_text(err, "ErrMsg")
+                    msg = _find_text(err, "ErrMsg") or _find_text(err, "Msg")
+                    if code or msg:
+                        errores.append({"code": code, "msg": msg})
+
+            # Si no se parsearon errores estructurados, buscar Motivos_obs y faultstring
+            if not errores:
+                motivo = _find_text(root, "Motivos_obs") or _find_text(root, "faultstring")
+                if motivo:
+                    errores.append({"code": "", "msg": motivo})
 
             if cae and resultado == "A":
                 return {
@@ -209,9 +227,10 @@ class WsfexService:
                         "fecha": _format_fecha(hoy),
                     },
                 }
+            detalle = "; ".join(f"[{e['code']}] {e['msg']}" for e in errores) if errores else "sin detalle"
             return {
                 "success": False,
-                "error": "ARCA rechazo el comprobante",
+                "error": f"ARCA rechazo el comprobante: {detalle}",
                 "resultado": resultado,
                 "errores": errores,
             }

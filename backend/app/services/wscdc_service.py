@@ -14,7 +14,7 @@ _ssl_ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
 
 WSCDC_URL = "https://servicios1.afip.gov.ar/WSCDC/service.asmx"
 WSCDC_URL_HOMO = "https://wswhomo.afip.gov.ar/WSCDC/service.asmx"
-WSCDC_NS = "http://ar.gov.afip.dif.WSCDC/"
+WSCDC_NS = "http://servicios1.afip.gob.ar/wscdc/"
 
 TIPOS_CBTE = {
     1: "Factura A", 2: "Nota de Débito A", 3: "Nota de Crédito A",

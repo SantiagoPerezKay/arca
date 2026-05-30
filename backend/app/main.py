@@ -35,7 +35,7 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
-APP_VERSION = "fecha-emision-probe-ptos-v5"
+APP_VERSION = "fix-fexgetcmp-body-v6"
 
 
 @app.get("/api/health")

@@ -588,15 +588,18 @@ class WsfexService:
                 # FEXGetPARAM_PtoVenta suele devolver vacio: probar puntos 1-10
                 ptos_buscar = list(range(1, 11))
 
+        print(f"[WSFEX] listar_facturas: ptos={ptos_buscar}, tipos={tipos_buscar}, desde={desde}, hasta={hasta}")
+
         facturas = []
         for pv in ptos_buscar:
             for ct in tipos_buscar:
                 ultimo = await WsfexService.obtener_ultimo_comprobante(cuit_clean, pv, ct, homo)
+                last_num = ultimo.get("data", {}).get("cbte_nro", 0) if ultimo.get("success") else "ERR"
+                print(f"[WSFEX] Pto {pv}, Tipo {ct}: ultimo={last_num} (success={ultimo.get('success')}, err={ultimo.get('error','')})")
                 if not ultimo.get("success") or ultimo["data"]["cbte_nro"] == 0:
                     continue
 
                 last_num = ultimo["data"]["cbte_nro"]
-                print(f"[WSFEX] Pto {pv}, Tipo {ct}: ultimo comprobante #{last_num}")
 
                 for nro in range(last_num, max(0, last_num - max_results), -1):
                     comp = await WsfexService.consultar_comprobante(cuit_clean, pv, ct, nro, homo)

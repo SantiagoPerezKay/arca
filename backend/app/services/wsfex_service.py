@@ -148,6 +148,11 @@ class WsfexService:
         # Para servicios (tipo 2) y otros (tipo 4) debe ir vacio.
         permiso = "N" if tipo_expo == 1 else ""
 
+        # Fecha_pago: obligatoria para exportacion de servicios (tipo 2) y otros (tipo 4).
+        fecha_pago_block = ""
+        if tipo_expo in (2, 4):
+            fecha_pago_block = f"<ar:Fecha_pago>{hoy}</ar:Fecha_pago>"
+
         body = (
             "<ar:FEXAuthorize>"
             "<ar:Auth>"
@@ -171,6 +176,7 @@ class WsfexService:
             f"<ar:Moneda_ctz>{moneda_cotiz}</ar:Moneda_ctz>"
             f"<ar:Imp_total>{imp_total_r}</ar:Imp_total>"
             f"<ar:Idioma_cbte>{idioma}</ar:Idioma_cbte>"
+            f"{fecha_pago_block}"
             f"<ar:Forma_pago>{forma_pago}</ar:Forma_pago>"
             + (f"<ar:Incoterms>{incoterms}</ar:Incoterms>" if incoterms else "")
             + "<ar:Items>"

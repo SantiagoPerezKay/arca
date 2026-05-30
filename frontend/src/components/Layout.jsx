@@ -62,7 +62,7 @@ navStructure.forEach((entry) => {
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
-  const { clientes, selectedId, selectCliente } = useCliente();
+  const { clientes, selectedId, selectedCliente, selectCliente } = useCliente();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);

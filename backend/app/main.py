@@ -35,7 +35,7 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
-APP_VERSION = "fix-fexgetcmp-body-v6"
+APP_VERSION = "fix-getlast-auth-v7"
 
 
 @app.get("/api/health")

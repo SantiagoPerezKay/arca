@@ -251,20 +251,24 @@ class WsfexService:
         if not auth:
             return {"success": False, "error": "Sin certificado para WSFEX", "requires_certificate": True}
 
+        # En FEXGetLast_CMP, Pto_venta y Cbte_Tipo van DENTRO del bloque Auth
         body = (
             "<ar:FEXGetLast_CMP>"
             "<ar:Auth>"
             f"<ar:Token>{auth['token']}</ar:Token>"
             f"<ar:Sign>{auth['sign']}</ar:Sign>"
             f"<ar:Cuit>{cuit_clean}</ar:Cuit>"
-            "</ar:Auth>"
             f"<ar:Pto_venta>{pto_vta}</ar:Pto_venta>"
             f"<ar:Cbte_Tipo>{cbte_tipo}</ar:Cbte_Tipo>"
+            "</ar:Auth>"
             "</ar:FEXGetLast_CMP>"
         )
         try:
-            root = await WsfexService._call_wsfex("FEXGetLast_CMP", body, homo)
+            resp_text = await WsfexService._call_wsfex_raw("FEXGetLast_CMP", body, homo)
+            root = ET.fromstring(resp_text)
             cbte_nro = int(_find_text(root, "Cbte_nro", "0"))
+            if cbte_nro == 0 and "Cbte_nro" not in resp_text:
+                print(f"[WSFEX] FEXGetLast_CMP pto={pto_vta} tipo={cbte_tipo} respuesta:\n{resp_text[:1500]}")
             return {
                 "success": True,
                 "data": {

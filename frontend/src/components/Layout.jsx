@@ -240,35 +240,67 @@ export default function Layout({ children }) {
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        {/* Selector global "Operar como" */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24,
-          background: 'white', borderRadius: 10, padding: '12px 20px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        }}>
-          <Users size={18} color="#1565c0" />
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#555' }}>Operar como:</span>
-          <select
-            value={selectedId ?? ''}
-            onChange={(e) => selectCliente(e.target.value ? Number(e.target.value) : null)}
-            style={{
-              padding: '8px 14px', borderRadius: 8, border: '2px solid #e0e0e0',
-              fontSize: 14, outline: 'none', background: 'white', minWidth: 280, cursor: 'pointer',
-            }}
-          >
-            <option value="">— Mi cuenta (sin representar) —</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {(c.razon_social || c.alias || 'Sin nombre')} · {c.cuit}
-              </option>
-            ))}
-          </select>
-          {clientes.length === 0 && (
-            <Link to="/clientes" style={{ fontSize: 13, color: '#1565c0', textDecoration: 'none', fontWeight: 500 }}>
-              + Agregar clientes
-            </Link>
-          )}
-        </div>
+        {/* Selector global "Operar como" - destaca con quien se esta operando */}
+        {(() => {
+          const repr = !!selectedCliente;
+          const nombreCliente = selectedCliente
+            ? (selectedCliente.razon_social || selectedCliente.alias || 'Sin nombre')
+            : null;
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24,
+              borderRadius: 10, padding: '14px 20px',
+              background: repr ? '#e8f0fe' : 'white',
+              border: repr ? '2px solid #1565c0' : '1px solid #eee',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              flexWrap: 'wrap',
+            }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 38, height: 38, borderRadius: '50%',
+                background: repr ? '#1565c0' : '#eceff1', flexShrink: 0,
+              }}>
+                <Users size={20} color={repr ? 'white' : '#90a4ae'} />
+              </div>
+
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, color: repr ? '#1565c0' : '#999', fontWeight: 600 }}>
+                  {repr ? 'Operando en representacion de' : 'Operando como'}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: '#1a1a2e', marginTop: 2 }}>
+                  {repr ? nombreCliente : 'Mi cuenta'}
+                  {repr && (
+                    <span style={{ fontSize: 13, fontWeight: 400, color: '#666', marginLeft: 8 }}>
+                      CUIT {selectedCliente.cuit}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <select
+                value={selectedId ?? ''}
+                onChange={(e) => selectCliente(e.target.value ? Number(e.target.value) : null)}
+                style={{
+                  padding: '9px 14px', borderRadius: 8, border: '2px solid #e0e0e0',
+                  fontSize: 14, outline: 'none', background: 'white', minWidth: 240, cursor: 'pointer',
+                }}
+              >
+                <option value="">Mi cuenta (sin representar)</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {(c.razon_social || c.alias || 'Sin nombre')} · {c.cuit}
+                  </option>
+                ))}
+              </select>
+
+              {clientes.length === 0 && (
+                <Link to="/clientes" style={{ fontSize: 13, color: '#1565c0', textDecoration: 'none', fontWeight: 500 }}>
+                  + Agregar clientes
+                </Link>
+              )}
+            </div>
+          );
+        })()}
 
         {children}
       </main>

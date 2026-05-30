@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { clientesAPI } from '../services/api';
 import { useCliente } from '../context/ClienteContext';
-import { Plus, Trash2, Edit3, Save, X, Users, Search, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit3, Save, X, Users, Search, Loader2, Info } from 'lucide-react';
 import { reportsAPI } from '../services/api';
 
 const inputStyle = {
@@ -113,6 +113,51 @@ export default function Clientes() {
 
       {error && <div style={{ background: '#fff0f0', color: '#d32f2f', padding: '12px 16px', borderRadius: 8, marginBottom: 16 }}>{error}</div>}
       {success && <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: '12px 16px', borderRadius: 8, marginBottom: 16 }}>{success}</div>}
+
+      {/* Aviso explicativo sobre la autorizacion en ARCA */}
+      <div style={{
+        background: '#fff8e1', border: '1px solid #ffe082', borderRadius: 10,
+        padding: 20, marginBottom: 24,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <Info size={20} color="#f57c00" />
+          <h3 style={{ margin: 0, fontSize: 15, color: '#795548' }}>
+            Importante: antes de operar por un cliente, el cliente debe autorizarte en ARCA
+          </h3>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: 13.5, color: '#6d5840', lineHeight: 1.6 }}>
+          Para que el sistema pueda emitir facturas o consultar datos <b>en nombre de un cliente</b>,
+          el cliente tiene que darte permiso por única vez desde su Clave Fiscal de ARCA.
+          Es un trámite simple que hace el cliente (o vos con su clave), una sola vez por cada servicio.
+        </p>
+
+        <details style={{ fontSize: 13.5, color: '#6d5840' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#795548', marginBottom: 8 }}>
+            Ver cómo autorizar a un contador en ARCA (paso a paso)
+          </summary>
+          <ol style={{ margin: '12px 0 0', paddingLeft: 20, lineHeight: 1.8 }}>
+            <li>El <b>cliente</b> ingresa a <b>arca.gob.ar</b> con <b>su</b> Clave Fiscal.</li>
+            <li>Entra a <b>"Administrador de Relaciones de Clave Fiscal"</b>.</li>
+            <li>Hace clic en <b>"Nueva Relación"</b>.</li>
+            <li>
+              En <b>"Representante"</b>, ingresa el <b>CUIT del contador</b> (el tuyo, el que tiene el certificado en este sistema).
+            </li>
+            <li>
+              En <b>"Servicio"</b>, busca y selecciona los servicios que el contador va a usar, por ejemplo:
+              <ul style={{ margin: '6px 0', paddingLeft: 18 }}>
+                <li><b>Comprobantes de Exportación</b> (para Factura E)</li>
+                <li><b>Facturación Electrónica</b> (para Factura A/B/C)</li>
+                <li><b>Servicio Consulta Padrón A13</b> (para informes)</li>
+              </ul>
+            </li>
+            <li>Confirma. La autorización queda activa de inmediato.</li>
+          </ol>
+          <p style={{ margin: '12px 0 0', fontSize: 13, fontStyle: 'italic' }}>
+            Nota: el contador NO necesita un certificado por cada cliente. Usa siempre su propio
+            certificado y actúa "en representación" del cliente gracias a esta autorización.
+          </p>
+        </details>
+      </div>
 
       {showForm && (
         <form onSubmit={handleCreate} style={{ background: 'white', borderRadius: 12, padding: 24, marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>

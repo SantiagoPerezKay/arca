@@ -35,6 +35,9 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
+APP_VERSION = "soapaction-quoted-v2"
+
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "ARCA Informes"}
+    return {"status": "ok", "service": "ARCA Informes", "version": APP_VERSION}

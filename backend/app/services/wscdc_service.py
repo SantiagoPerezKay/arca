@@ -50,7 +50,7 @@ class WscdcService:
                 content=envelope,
                 headers={
                     "Content-Type": "text/xml; charset=utf-8",
-                    "SOAPAction": f"{WSCDC_NS}{soap_action}",
+                    "SOAPAction": f'"{WSCDC_NS}{soap_action}"',
                 },
             )
         return ET.fromstring(resp.text)

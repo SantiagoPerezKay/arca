@@ -11,18 +11,54 @@ import {
   X,
   ShieldCheck,
   FilePlus,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  DollarSign,
+  Activity,
+  Globe,
 } from 'lucide-react';
 import { useState } from 'react';
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/credentials', label: 'Credenciales', icon: KeyRound },
-  { path: '/reports', label: 'Informes', icon: FileSearch },
-  { path: '/facturas', label: 'Facturas', icon: Receipt },
-  { path: '/emitir', label: 'Emitir Factura', icon: FilePlus },
-  { path: '/consultas', label: 'Consultas', icon: ShieldCheck },
-  { path: '/history', label: 'Historial', icon: History },
+// Estructura de navegacion con grupos y submenus
+const navStructure = [
+  { type: 'item', path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  {
+    type: 'group',
+    label: 'Facturas',
+    icon: Receipt,
+    children: [
+      { path: '/facturas', label: 'Ver Facturas', icon: FileText },
+      { path: '/emitir', label: 'Emitir Factura', icon: FilePlus },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Informes',
+    icon: FileSearch,
+    children: [
+      { path: '/reports', label: 'Informe de Padron', icon: FileText },
+      { path: '/consultas', label: 'Consultas y Validaciones', icon: ShieldCheck },
+    ],
+  },
+  {
+    type: 'group',
+    label: 'Configuracion',
+    icon: KeyRound,
+    children: [
+      { path: '/credentials', label: 'Credenciales', icon: KeyRound },
+    ],
+  },
+  { type: 'item', path: '/history', label: 'Historial', icon: History },
 ];
+
+// Mapeo de cada ruta al label de su grupo (para abrir el grupo activo por defecto)
+const groupOfPath = {};
+navStructure.forEach((entry) => {
+  if (entry.type === 'group') {
+    entry.children.forEach((c) => { groupOfPath[c.path] = entry.label; });
+  }
+});
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
@@ -30,10 +66,40 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Grupos abiertos: por defecto el que contiene la ruta activa
+  const [openGroups, setOpenGroups] = useState(() => {
+    const active = groupOfPath[location.pathname];
+    return active ? { [active]: true } : {};
+  });
+
+  const toggleGroup = (label) => {
+    setOpenGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const linkBaseStyle = (active) => ({
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '11px 16px',
+    borderRadius: 8,
+    color: 'white',
+    textDecoration: 'none',
+    marginBottom: 4,
+    background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+    fontWeight: active ? 600 : 400,
+    transition: 'background 0.2s',
+    cursor: 'pointer',
+    border: 'none',
+    width: '100%',
+    fontSize: 14,
+    textAlign: 'left',
+    boxSizing: 'border-box',
+  });
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f0f2f5' }}>
@@ -47,7 +113,6 @@ export default function Layout({ children }) {
           position: 'fixed',
           height: '100vh',
           zIndex: 100,
-          transform: sidebarOpen ? 'translateX(0)' : undefined,
         }}
         className="sidebar"
       >
@@ -58,32 +123,71 @@ export default function Layout({ children }) {
           <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.6 }}>ex AFIP</p>
         </div>
 
-        <nav style={{ flex: 1, padding: '16px 12px' }}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname === item.path;
+        <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto' }}>
+          {navStructure.map((entry) => {
+            // Item simple
+            if (entry.type === 'item') {
+              const Icon = entry.icon;
+              const active = location.pathname === entry.path;
+              return (
+                <Link
+                  key={entry.path}
+                  to={entry.path}
+                  onClick={() => setSidebarOpen(false)}
+                  style={linkBaseStyle(active)}
+                >
+                  <Icon size={20} />
+                  {entry.label}
+                </Link>
+              );
+            }
+
+            // Grupo con submenu
+            const GroupIcon = entry.icon;
+            const isOpen = !!openGroups[entry.label];
+            const hasActiveChild = entry.children.some((c) => c.path === location.pathname);
+
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '12px 16px',
-                  borderRadius: 8,
-                  color: 'white',
-                  textDecoration: 'none',
-                  marginBottom: 4,
-                  background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
-                  fontWeight: active ? 600 : 400,
-                  transition: 'background 0.2s',
-                }}
-              >
-                <Icon size={20} />
-                {item.label}
-              </Link>
+              <div key={entry.label} style={{ marginBottom: 2 }}>
+                <button
+                  onClick={() => toggleGroup(entry.label)}
+                  style={{
+                    ...linkBaseStyle(hasActiveChild && !isOpen),
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <GroupIcon size={20} />
+                    {entry.label}
+                  </span>
+                  {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+
+                {isOpen && (
+                  <div style={{ marginLeft: 12, marginTop: 2, marginBottom: 6 }}>
+                    {entry.children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const active = location.pathname === child.path;
+                      return (
+                        <Link
+                          key={child.path}
+                          to={child.path}
+                          onClick={() => setSidebarOpen(false)}
+                          style={{
+                            ...linkBaseStyle(active),
+                            padding: '9px 16px',
+                            fontSize: 13,
+                            opacity: active ? 1 : 0.85,
+                          }}
+                        >
+                          <ChildIcon size={17} />
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>

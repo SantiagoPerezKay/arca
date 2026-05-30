@@ -11,7 +11,7 @@ _ssl_ctx.set_ciphers("DEFAULT:@SECLEVEL=1")
 
 WSFEX_URL = "https://servicios1.afip.gov.ar/wsfexv1/service.asmx"
 WSFEX_URL_HOMO = "https://wswhomo.afip.gov.ar/wsfexv1/service.asmx"
-WSFEX_NS = "http://ar.gov.afip.dif.FEXv1/"
+WSFEX_NS = "http://ar.gov.afip.dif.fexv1/"
 
 
 def _soap_envelope(body: str) -> str:

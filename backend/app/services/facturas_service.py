@@ -76,7 +76,7 @@ class FacturasService:
                 content=envelope,
                 headers={
                     "Content-Type": "text/xml; charset=utf-8",
-                    "SOAPAction": f"{WSFE_NS}{soap_action}",
+                    "SOAPAction": f'"{WSFE_NS}{soap_action}"',
                 },
             )
         return ET.fromstring(resp.text)

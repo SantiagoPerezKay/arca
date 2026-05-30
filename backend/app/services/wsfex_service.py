@@ -59,7 +59,7 @@ class WsfexService:
                 content=envelope,
                 headers={
                     "Content-Type": "text/xml; charset=utf-8",
-                    "SOAPAction": f"{WSFEX_NS}{soap_action}",
+                    "SOAPAction": f'"{WSFEX_NS}{soap_action}"',
                 },
             )
         return resp.text

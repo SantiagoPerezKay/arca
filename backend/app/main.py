@@ -35,7 +35,7 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
-APP_VERSION = "soapaction-quoted-v2"
+APP_VERSION = "wsfex-lowercase-ns-v3"
 
 
 @app.get("/api/health")

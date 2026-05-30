@@ -316,24 +316,36 @@ class ArcaService:
 
     @staticmethod
     async def verificar_servicio() -> dict:
-        """Verifica que los servicios de ARCA estén activos."""
+        """Verifica que el servicio de Padron A13 esté activo (dummy)."""
         async with httpx.AsyncClient(timeout=15, verify=_ssl_ctx) as client:
             try:
                 soap = (
                     '<?xml version="1.0" encoding="UTF-8"?>'
                     '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"'
-                    ' xmlns:a5="http://a5.soap.ws.server.puc.sr/">'
-                    "<soapenv:Body><a5:dummy/></soapenv:Body></soapenv:Envelope>"
+                    f' xmlns:a13="{PADRON_A13_NS}">'
+                    "<soapenv:Body><a13:dummy/></soapenv:Body></soapenv:Envelope>"
                 )
-                resp = await client.post(PADRON_A5_URL, content=soap, headers={"Content-Type": "text/xml"})
+                resp = await client.post(
+                    PADRON_A13_URL, content=soap,
+                    headers={"Content-Type": "text/xml; charset=utf-8", "SOAPAction": ""},
+                )
                 root = ET.fromstring(resp.text)
-                app = root.findtext(".//{http://a5.soap.ws.server.puc.sr/}appserver") or "?"
-                auth = root.findtext(".//{http://a5.soap.ws.server.puc.sr/}authserver") or "?"
-                db = root.findtext(".//{http://a5.soap.ws.server.puc.sr/}dbserver") or "?"
+
+                def _ft(*names):
+                    for n in names:
+                        for el in root.iter():
+                            tag = el.tag.split("}")[-1] if "}" in el.tag else el.tag
+                            if tag.lower() == n.lower() and el.text:
+                                return el.text
+                    return "?"
+
+                app = _ft("appserver", "appServer")
+                auth = _ft("authserver", "authServer")
+                db = _ft("dbserver", "dbServer")
                 return {
                     "success": True,
                     "data": {
-                        "padron_a5": {"appserver": app, "authserver": auth, "dbserver": db},
+                        "padron_a13": {"appserver": app, "authserver": auth, "dbserver": db},
                     },
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }

@@ -35,7 +35,7 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
-APP_VERSION = "fix-getlast-auth-v7"
+APP_VERSION = "padron-a13-v8"
 
 
 @app.get("/api/health")

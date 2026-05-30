@@ -19,6 +19,8 @@ WSAA_URL = "https://wsaa.arca.gob.ar/ws/services/LoginCms"
 WSAA_URL_HOMO = "https://wsaahomo.afip.gov.ar/ws/services/LoginCms"
 PADRON_A5_URL = "https://aws.arca.gob.ar/sr-padron/webservices/personaServiceA5"
 PADRON_A5_URL_HOMO = "https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5"
+PADRON_A13_URL = "https://aws.arca.gob.ar/sr-padron/webservices/personaServiceA13"
+PADRON_A13_NS = "http://a13.soap.ws.server.puc.sr/"
 
 CERTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "certs")
 
@@ -165,18 +167,19 @@ class ArcaService:
 
     @staticmethod
     async def consultar_persona(cuit: str, cuit_representada: str = None) -> dict:
-        """Consulta datos de una persona via WS_SR_PADRON_A5."""
+        """Consulta datos de una persona via WS_SR_PADRON_A13 (mismo dato que A5 + extras)."""
         cuit_clean = cuit.replace("-", "").strip()
         cuit_repr = (cuit_representada or cuit).replace("-", "").strip()
 
-        auth = await WsaaAuth.login("ws_sr_padron_a5", cuit_repr)
+        auth = await WsaaAuth.login("ws_sr_padron_a13", cuit_repr)
         if not auth:
             has_cert = ArcaService.has_certificate(cuit_repr)
             if has_cert:
                 return {
                     "success": False,
                     "error": "El certificado existe pero WSAA rechazó la autenticación. "
-                             "Verifica que el certificado esté autorizado para el servicio 'ws_sr_padron_a5' en ARCA. "
+                             "Verifica que el certificado esté autorizado para el servicio "
+                             "'Servicio Consulta Padron A13' (ws_sr_padron_a13) en ARCA. "
                              "Revisa la consola del backend para más detalles.",
                 }
             return {
@@ -189,29 +192,32 @@ class ArcaService:
         soap_body = (
             '<?xml version="1.0" encoding="UTF-8"?>'
             '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"'
-            ' xmlns:a5="http://a5.soap.ws.server.puc.sr/">'
+            f' xmlns:a13="{PADRON_A13_NS}">'
             "<soapenv:Body>"
-            "<a5:getPersona_v2>"
+            "<a13:getPersona>"
             f"<token>{auth['token']}</token>"
             f"<sign>{auth['sign']}</sign>"
             f"<cuitRepresentada>{cuit_repr}</cuitRepresentada>"
             f"<idPersona>{cuit_clean}</idPersona>"
-            "</a5:getPersona_v2>"
+            "</a13:getPersona>"
             "</soapenv:Body></soapenv:Envelope>"
         )
 
         async with httpx.AsyncClient(timeout=30, verify=_ssl_ctx) as client:
             try:
                 resp = await client.post(
-                    PADRON_A5_URL,
+                    PADRON_A13_URL,
                     content=soap_body,
-                    headers={"Content-Type": "text/xml"},
+                    headers={
+                        "Content-Type": "text/xml; charset=utf-8",
+                        "SOAPAction": "",
+                    },
                 )
                 data = ArcaService._parse_persona_response(resp.text)
                 return {
                     "success": True,
                     "data": data,
-                    "source": "ws_sr_padron_a5",
+                    "source": "ws_sr_padron_a13",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
             except Exception as e:
@@ -220,31 +226,46 @@ class ArcaService:
     @staticmethod
     def _parse_persona_response(xml_text: str) -> dict:
         root = ET.fromstring(xml_text)
-        ns = {"a5": "http://a5.soap.ws.server.puc.sr/"}
-        persona = root.find(".//personaReturn") or root.find(".//{http://a5.soap.ws.server.puc.sr/}personaReturn")
+
+        # Detectar SOAP Fault
+        fault = root.find(".//{http://schemas.xmlsoap.org/soap/envelope/}Fault")
+        if fault is not None:
+            msg = fault.findtext("faultstring") or "Error desconocido"
+            return {"error_arca": msg}
+
+        # Buscar el nodo persona en cualquier formato (A5: personaReturn, A13: return/persona)
+        def _local(tag):
+            return tag.split("}")[-1] if "}" in tag else tag
+
+        persona = None
+        for candidate in ("personaReturn", "persona", "return"):
+            for elem in root.iter():
+                if _local(elem.tag) == candidate and len(list(elem)) > 0:
+                    persona = elem
+                    break
+            if persona is not None:
+                break
 
         if persona is None:
             return {"raw": xml_text}
 
-        result = {}
-        for elem in persona:
-            tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
-            children = list(elem)
-            if children:
-                child_data = {}
-                for child in children:
-                    child_tag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
-                    child_data[child_tag] = child.text
-                if tag in result:
-                    if not isinstance(result[tag], list):
-                        result[tag] = [result[tag]]
-                    result[tag].append(child_data)
+        def _node_to_data(node):
+            children = list(node)
+            if not children:
+                return node.text
+            data = {}
+            for child in children:
+                ctag = _local(child.tag)
+                value = _node_to_data(child)
+                if ctag in data:
+                    if not isinstance(data[ctag], list):
+                        data[ctag] = [data[ctag]]
+                    data[ctag].append(value)
                 else:
-                    result[tag] = child_data
-            else:
-                result[tag] = elem.text
+                    data[ctag] = value
+            return data
 
-        return result
+        return _node_to_data(persona)
 
     @staticmethod
     async def consultar_cuit_publico(cuit: str) -> dict:

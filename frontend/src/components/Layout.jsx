@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCliente } from '../context/ClienteContext';
 import {
   LayoutDashboard,
   KeyRound,
@@ -14,9 +15,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
-  DollarSign,
-  Activity,
-  Globe,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -46,6 +45,7 @@ const navStructure = [
     label: 'Configuracion',
     icon: KeyRound,
     children: [
+      { path: '/clientes', label: 'Clientes', icon: Users },
       { path: '/credentials', label: 'Credenciales', icon: KeyRound },
     ],
   },
@@ -62,6 +62,7 @@ navStructure.forEach((entry) => {
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
+  const { clientes, selectedId, selectCliente } = useCliente();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -238,6 +239,37 @@ export default function Layout({ children }) {
         >
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
+
+        {/* Selector global "Operar como" */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24,
+          background: 'white', borderRadius: 10, padding: '12px 20px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        }}>
+          <Users size={18} color="#1565c0" />
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#555' }}>Operar como:</span>
+          <select
+            value={selectedId ?? ''}
+            onChange={(e) => selectCliente(e.target.value ? Number(e.target.value) : null)}
+            style={{
+              padding: '8px 14px', borderRadius: 8, border: '2px solid #e0e0e0',
+              fontSize: 14, outline: 'none', background: 'white', minWidth: 280, cursor: 'pointer',
+            }}
+          >
+            <option value="">— Mi cuenta (sin representar) —</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {(c.razon_social || c.alias || 'Sin nombre')} · {c.cuit}
+              </option>
+            ))}
+          </select>
+          {clientes.length === 0 && (
+            <Link to="/clientes" style={{ fontSize: 13, color: '#1565c0', textDecoration: 'none', fontWeight: 500 }}>
+              + Agregar clientes
+            </Link>
+          )}
+        </div>
+
         {children}
       </main>
     </div>

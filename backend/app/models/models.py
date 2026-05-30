@@ -15,6 +15,7 @@ class User(Base):
 
     credentials = relationship("ArcaCredential", back_populates="user", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    clientes = relationship("Cliente", back_populates="user", cascade="all, delete-orphan")
 
 
 class ArcaCredential(Base):
@@ -29,6 +30,21 @@ class ArcaCredential(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="credentials")
+
+
+class Cliente(Base):
+    """Cliente que el contador (User) representa ante ARCA via cuit_representada."""
+    __tablename__ = "clientes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cuit = Column(String(13), nullable=False)
+    razon_social = Column(String(200), default="")
+    alias = Column(String(100), default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", back_populates="clientes")
 
 
 class Certificate(Base):

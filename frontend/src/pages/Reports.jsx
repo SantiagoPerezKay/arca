@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { credentialsAPI, reportsAPI, certificatesAPI } from '../services/api';
-import { Search, FileText, ClipboardList, Activity, Loader2, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { useCliente } from '../context/ClienteContext';
+import { Search, FileText, ClipboardList, Activity, Loader2, ShieldCheck, AlertTriangle, Users } from 'lucide-react';
 
 const reportTypes = [
   { key: 'informeCompleto', label: 'Informe Completo', icon: ClipboardList, desc: 'Datos completos del padron (requiere certificado)', color: '#7c4dff' },
@@ -9,6 +10,7 @@ const reportTypes = [
 ];
 
 export default function Reports() {
+  const { selectedCliente } = useCliente();
   const [credentials, setCredentials] = useState([]);
   const [selectedCuit, setSelectedCuit] = useState('');
   const [customCuit, setCustomCuit] = useState('');
@@ -32,10 +34,19 @@ export default function Reports() {
     });
   }, []);
 
-  const getCuit = () => customCuit.replace(/\D/g, '') || selectedCuit.replace(/-/g, '');
+  // El CUIT del contador (dueño del certificado) que representa al cliente
+  const representanteCuit = () => selectedCuit.replace(/-/g, '');
+
+  // CUIT objetivo: cliente seleccionado tiene prioridad, luego entrada manual, luego credencial
+  const getCuit = () =>
+    (selectedCliente?.cuit?.replace(/\D/g, '')) ||
+    customCuit.replace(/\D/g, '') ||
+    selectedCuit.replace(/-/g, '');
 
   const runReport = async (type) => {
     const cuit = getCuit();
+    // Si operamos representando a un cliente, usar el cert del contador como representante
+    const repr = selectedCliente ? representanteCuit() : undefined;
 
     if (type === 'estadoServicio') {
       setLoading(true);
@@ -63,7 +74,7 @@ export default function Reports() {
     try {
       let res;
       if (type === 'informeCompleto') {
-        res = await reportsAPI.informeCompleto(cuit);
+        res = await reportsAPI.informeCompleto(cuit, repr);
       } else if (type === 'consultaCuit') {
         res = await reportsAPI.consultaCuit(cuit);
       } else {
@@ -116,6 +127,17 @@ export default function Reports() {
       <p style={{ color: '#666', margin: '0 0 24px', fontSize: 14 }}>
         Selecciona un CUIT y el tipo de informe
       </p>
+
+      {selectedCliente && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16,
+          background: '#e3f2fd', color: '#1565c0', padding: '10px 16px',
+          borderRadius: 8, fontSize: 13,
+        }}>
+          <Users size={16} />
+          Consultando datos de <b>{selectedCliente.razon_social || selectedCliente.alias || selectedCliente.cuit}</b> (CUIT {selectedCliente.cuit})
+        </div>
+      )}
 
       <div style={{ background: 'white', borderRadius: 12, padding: 24, marginBottom: 24, boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>

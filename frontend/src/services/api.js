@@ -90,6 +90,13 @@ export const facturasAPI = {
   emitirExportacion: (data) => api.post('/facturas/emitir-exportacion', data),
 };
 
+export const clientesAPI = {
+  list: () => api.get('/clientes/'),
+  create: (data) => api.post('/clientes/', data),
+  update: (id, data) => api.put(`/clientes/${id}`, data),
+  delete: (id) => api.delete(`/clientes/${id}`),
+};
+
 export const consultasAPI = {
   constatarComprobante: (params) => api.get('/consultas/constatar-comprobante', { params }),
   estadoWscdc: () => api.get('/consultas/estado-wscdc'),

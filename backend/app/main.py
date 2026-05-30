@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine, Base
-from app.routes import auth, credentials, reports, certificates, facturas, consultas
+from app.routes import auth, credentials, reports, certificates, facturas, consultas, clientes
 
 Base.metadata.create_all(bind=engine)
 
@@ -33,9 +33,10 @@ app.include_router(reports.router)
 app.include_router(certificates.router)
 app.include_router(facturas.router)
 app.include_router(consultas.router)
+app.include_router(clientes.router)
 
 
-APP_VERSION = "padron-a13-estado-v9"
+APP_VERSION = "multi-cliente-v10"
 
 
 @app.get("/api/health")

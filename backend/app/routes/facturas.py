@@ -40,6 +40,7 @@ class EmitirFacturaERequest(BaseModel):
     tipo_expo: int = 2
     incoterms: str = ""
     idioma: int = 2
+    fecha_cbte: str | None = None
 
 
 TIPOS_WSFEX = {19, 20, 21}
@@ -249,6 +250,7 @@ async def emitir_factura_exportacion(
         tipo_expo=req.tipo_expo,
         incoterms=req.incoterms,
         idioma=req.idioma,
+        fecha_cbte=req.fecha_cbte,
     )
     if result.get("success"):
         report = Report(

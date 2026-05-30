@@ -120,6 +120,7 @@ class WsfexService:
         incoterms: str = "",
         idioma: int = 2,
         forma_pago: str = "Transferencia bancaria",
+        fecha_cbte: str = None,
         homo: bool = False,
     ) -> dict:
         """
@@ -141,7 +142,7 @@ class WsfexService:
         last_id = await WsfexService._obtener_ultimo_id(cuit_clean, auth, homo)
         nuevo_id = last_id + 1
 
-        hoy = datetime.now().strftime("%Y%m%d")
+        hoy = (fecha_cbte.replace("-", "") if fecha_cbte else datetime.now().strftime("%Y%m%d"))
         imp_total_r = round(imp_total, 2)
 
         # Permiso_existente: solo aplica a exportacion de bienes (tipo 1).
@@ -581,10 +582,11 @@ class WsfexService:
             ptos_buscar = [pto_vta]
         else:
             ptos_result = await WsfexService.obtener_puntos_venta(cuit_clean, homo)
-            if not ptos_result.get("success") or not ptos_result.get("data"):
-                ptos_buscar = [1]
-            else:
+            if ptos_result.get("success") and ptos_result.get("data"):
                 ptos_buscar = [int(p["numero"]) for p in ptos_result["data"] if not p.get("fecha_baja")]
+            else:
+                # FEXGetPARAM_PtoVenta suele devolver vacio: probar puntos 1-10
+                ptos_buscar = list(range(1, 11))
 
         facturas = []
         for pv in ptos_buscar:

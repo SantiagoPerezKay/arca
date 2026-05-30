@@ -37,6 +37,7 @@ export default function EmitirFactura() {
   const [exp, setExp] = useState({
     pto_vta: 3, cliente: '', cuit_pais_cliente: '', domicilio_cliente: '',
     dst_pais: 212, moneda_id: 'DOL', moneda_cotiz: '', descripcion: '', imp_total: '',
+    fecha_cbte: new Date().toISOString().slice(0, 10),
   });
 
   useEffect(() => {
@@ -135,6 +136,7 @@ export default function EmitirFactura() {
         moneda_cotiz: parseFloat(exp.moneda_cotiz),
         descripcion: exp.descripcion,
         imp_total: parseFloat(exp.imp_total),
+        fecha_cbte: exp.fecha_cbte,
       });
       setResult(res.data);
     } catch (err) {
@@ -293,6 +295,10 @@ export default function EmitirFactura() {
       {tipo === 'exportacion' && (
         <div style={cardStyle}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Fecha Emision</label>
+              <input type="date" value={exp.fecha_cbte} onChange={(e) => setExp({ ...exp, fecha_cbte: e.target.value })} style={inputStyle} />
+            </div>
             <div>
               <label style={labelStyle}>Punto de Venta</label>
               <input type="number" value={exp.pto_vta} onChange={(e) => setExp({ ...exp, pto_vta: e.target.value })} style={inputStyle} />

@@ -35,7 +35,7 @@ app.include_router(facturas.router)
 app.include_router(consultas.router)
 
 
-APP_VERSION = "wsfex-fecha-pago-v4"
+APP_VERSION = "fecha-emision-probe-ptos-v5"
 
 
 @app.get("/api/health")
